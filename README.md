@@ -1,6 +1,8 @@
 # 光伏电站智能选址数据可视化大屏
 
 一个基于3D地图和机器学习的光伏电站选址决策支持系统，提供直观的数据可视化和智能分析功能。
+<img width="1920" height="869" alt="image" src="https://github.com/user-attachments/assets/9a07543e-774b-4579-89c0-dc5edfd33bb2" />
+
 
 ## 🌟 功能特色
 
