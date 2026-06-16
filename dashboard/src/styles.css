@@ -376,7 +376,7 @@ button {
 
 .dashboard-left,
 .dashboard-right {
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 0.82fr) minmax(0, 1.18fr);
   perspective: 900px;
   position: relative;
   z-index: 3;
@@ -604,25 +604,65 @@ button {
   height: calc(100% - 26px) !important;
 }
 
+.stats-panel,
+.suitability-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.stats-panel .panel-title {
+  height: 30px;
+  font-size: 15px;
+}
+
+.stats-panel .panel-title em {
+  font-size: 13px;
+}
+
+.stats-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  padding: 5px 7px 7px;
+}
+
+.suitability-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 2px 6px 6px;
+}
+
 .metric-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 5px;
-  padding: 5px;
-  max-height: calc(100% - 26px);
-  overflow-y: hidden;
-  overflow-x: hidden;
+  grid-template-rows: 1fr 1fr;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  max-height: none;
+  overflow: hidden;
 }
 
 .metric {
-  display: grid;
-  grid-template-columns: 1fr;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  min-height: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(68, 231, 248, 0.12);
+  background: linear-gradient(135deg, rgba(20, 93, 120, 0.16), rgba(2, 13, 20, 0.2));
+}
+
+.metric-content {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
-  min-height: 48px;
-  padding: 5px 6px;
-  border: 1px solid rgba(68, 231, 248, 0.09);
-  background: linear-gradient(135deg, rgba(20, 93, 120, 0.11), rgba(2, 13, 20, 0.14));
+  min-width: 0;
 }
 
 .metric-icon {
@@ -647,6 +687,16 @@ button {
   font-size: 12px;
 }
 
+.stats-panel .metric span {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  color: #b5d4db;
+  letter-spacing: 0.02em;
+}
+
 .metric span {
   display: block;
   white-space: nowrap;
@@ -654,41 +704,51 @@ button {
   text-overflow: ellipsis;
 }
 
-.metric strong {
-  display: block;
-  margin-top: 2px;
+.stats-panel .metric strong {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+  margin-top: 0;
   color: #f8feff;
-  font-size: 17px;
-  font-weight: 500;
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.1;
   text-shadow: 0 0 14px rgba(39, 231, 243, 0.42);
   white-space: nowrap;
 }
 
-.metric small {
+.stats-panel .metric small {
   color: #4ee9f7;
-  margin-left: 3px;
+  margin-left: 0;
+  font-size: 12px;
+  font-weight: 500;
   white-space: nowrap;
 }
 
 .suitability-chart {
+  flex: 1.35;
   width: 100%;
-  height: 115px;
+  min-height: 172px;
+  height: auto;
 }
 
 .progress-list {
-  padding: 0 6px 5px;
+  flex-shrink: 0;
+  display: grid;
+  gap: 4px;
+  padding: 0;
 }
 
 .progress-item {
   display: grid;
-  grid-template-columns: 52px 1fr 46px;
-  gap: 5px;
+  grid-template-columns: 54px 1fr 48px;
+  gap: 6px;
   align-items: center;
-  margin: 1px 0;
+  margin: 0;
 }
 
 .progress-item i {
-  height: 5px;
+  height: 6px;
   background: rgba(255, 255, 255, 0.1);
   box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.3);
 }
@@ -1158,33 +1218,45 @@ tbody td:last-child {
     font-size: 11px;
   }
 
+  .dashboard-left {
+    grid-template-rows: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  }
+
+  .stats-panel-body {
+    padding: 4px 6px 6px;
+  }
+
   .metric-grid {
-    gap: 4px;
-    padding: 4px;
+    gap: 5px;
   }
 
   .metric {
-    grid-template-columns: 1fr;
-    min-height: 45px;
-    padding: 4px 5px;
+    padding: 8px 10px;
   }
 
-  .metric strong {
-    font-size: 15px;
+  .stats-panel .metric span {
+    font-size: 14px;
+  }
+
+  .stats-panel .metric strong {
+    font-size: 22px;
+  }
+
+  .stats-panel .metric small {
+    font-size: 11px;
   }
 
   .suitability-chart {
-    height: 105px;
+    min-height: 148px;
   }
 
   .progress-list {
-    padding: 0 5px 4px;
+    gap: 3px;
   }
 
   .progress-item {
-    grid-template-columns: 48px 1fr 42px;
-    gap: 4px;
-    margin: 1px 0;
+    grid-template-columns: 50px 1fr 44px;
+    gap: 5px;
   }
 
   .hex-grid {
@@ -1681,9 +1753,13 @@ tbody td:last-child {
 }
 
 .loading-content p {
-  color: var(--muted);
   margin: 6px 0;
-  font-size: 13px;
+}
+
+.loading-hint {
+  font-size: 12px;
+  color: rgba(185, 216, 223, 0.72);
+  margin: 6px 0;
 }
 
 .error-panel {

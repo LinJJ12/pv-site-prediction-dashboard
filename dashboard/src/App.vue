@@ -20,14 +20,13 @@
       <section class="side left-stack dashboard-left">
         <article class="panel stats-panel">
           <div class="panel-title"><span></span>全国光伏样本站统计<em>单位：座 / km2</em></div>
-          <div class="scrollable-panel" style="height: calc(100% - 26px);">
+          <div class="stats-panel-body">
             <div class="metric-grid">
               <div class="metric" v-for="item in metrics" :key="item.label">
                 <div class="metric-icon">{{ item.icon }}</div>
-                <div>
+                <div class="metric-content">
                   <span>{{ item.label }}</span>
-                  <strong>{{ item.value }}</strong>
-                  <small>{{ item.unit }}</small>
+                  <strong>{{ item.value }}<small>{{ item.unit }}</small></strong>
                 </div>
               </div>
             </div>
@@ -36,12 +35,14 @@
 
         <article class="panel suitability-panel">
           <div class="panel-title"><span></span>各等级选址占比<em>单位：%</em></div>
-          <div ref="suitabilityPieRef" class="suitability-chart"></div>
-          <div class="progress-list">
-            <div class="progress-item" v-for="grade in suitability" :key="grade.name">
-              <span>{{ grade.name }}</span>
-              <i><b :style="{ width: `${grade.value}%`, background: grade.color }"></b></i>
-              <strong>{{ grade.count }}</strong>
+          <div class="suitability-panel-body">
+            <div ref="suitabilityPieRef" class="suitability-chart"></div>
+            <div class="progress-list">
+              <div class="progress-item" v-for="grade in suitability" :key="grade.name">
+                <span>{{ grade.name }}</span>
+                <i><b :style="{ width: `${grade.value}%`, background: grade.color }"></b></i>
+                <strong>{{ grade.count }}</strong>
+              </div>
             </div>
           </div>
         </article>
@@ -187,8 +188,9 @@
           </div>
           <div class="loading-content" v-if="isLoading">
             <div class="loading-spinner"></div>
-            <p>正在获取真实太阳能数据...</p>
-            <p>正在进行 PVPI 指数计算...</p>
+            <p>正在从 NASA POWER 获取点击位置气候数据...</p>
+            <p>正在运行 GAT+GBDT 模型计算 PVPI...</p>
+            <p class="loading-hint">首次请求可能需要 30-90 秒，请耐心等待</p>
           </div>
 
           <div class="error-content" v-else-if="errorMessage">
@@ -215,6 +217,7 @@
               <div class="data-card"><span class="data-label">年降水量</span><strong>{{ realtimeResult.solar_data.precip_annual_mean }} mm</strong></div>
             </div>
             <div class="data-card source-card" v-if="realtimeResult.solar_data.source"><span class="data-label">数据来源</span><strong>{{ realtimeResult.solar_data.source }}</strong></div>
+            <div class="data-card source-card" v-if="realtimeResult.inference_version"><span class="data-label">推理版本</span><strong>{{ realtimeResult.inference_version }}</strong></div>
             <div class="data-card source-card" v-if="realtimeResult.fallback_reason"><span class="data-label">回退原因</span><strong>{{ realtimeResult.fallback_reason }}</strong></div>
           </div>
 
@@ -752,29 +755,22 @@ const renderDashboardSuitabilityPie = () => {
       }
     },
     legend: {
-      orient: "vertical",
-      right: 20,
-      top: "middle",
+      orient: "horizontal",
+      bottom: 0,
+      left: "center",
       itemWidth: 10,
       itemHeight: 10,
-      textStyle: { color: "#c3d9df", fontSize: 12 }
+      itemGap: 16,
+      textStyle: { color: "#c3d9df", fontSize: 11 }
     },
     series: [
       {
         type: "pie",
-        radius: ["42%", "68%"],
-        center: ["38%", "50%"],
-        avoidLabelOverlap: true,
-        label: {
-          color: "#e8fbff",
-          formatter: "{b}\n{d}%",
-          fontSize: 12
-        },
-        labelLine: {
-          length: 8,
-          length2: 8,
-          lineStyle: { color: "rgba(68, 231, 248, .5)" }
-        },
+        radius: ["50%", "76%"],
+        center: ["50%", "45%"],
+        avoidLabelOverlap: false,
+        label: { show: false },
+        labelLine: { show: false },
         itemStyle: {
           borderColor: "rgba(3, 20, 29, .95)",
           borderWidth: 2,
@@ -991,27 +987,60 @@ const handleResize = () => {
   visibleCharts.value.forEach((chart) => chart.resize());
 };
 
+const API_BASES = ["http://127.0.0.1:5000", "http://localhost:5000"];
+
+const fetchFromApi = async (path, options = {}) => {
+  let lastError = null;
+  for (const base of API_BASES) {
+    try {
+      const response = await fetch(`${base}${path}`, options);
+      if (!response.ok) {
+        throw new Error(`接口响应异常：${response.status}`);
+      }
+      return response;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error("后端服务不可用");
+};
+
 const fetchPrediction = async (lat, lon) => {
   isLoading.value = true;
   errorMessage.value = "";
   realtimeResult.value = null;
   
   try {
-    const mode = useFullModel.value ? 'full' : 'simple';
-    const apiBases = ["http://127.0.0.1:5000", "http://localhost:5000", window.location.origin];
+    const mode = useFullModel.value ? "full" : "simple";
+    const timeoutMs = useFullModel.value ? 120000 : 30000;
     let lastError = null;
 
-    for (const base of apiBases) {
+    for (const base of API_BASES) {
       try {
-        const response = await fetch(`${base}/api/predict?lat=${lat}&lon=${lon}&mode=${mode}`, { signal: AbortSignal.timeout(8000) });
+        const response = await fetch(
+          `${base}/api/predict?lat=${lat}&lon=${lon}&mode=${mode}`,
+          { signal: AbortSignal.timeout(timeoutMs) }
+        );
         let result = null;
         try {
           result = await response.json();
         } catch {
           result = null;
         }
-        if (!response.ok || result?.error) {
-          throw new Error(result?.error || `接口响应异常：${response.status}`);
+        if (!response.ok || result?.error || !result) {
+          throw new Error(result?.error || (result ? `接口响应异常：${response.status}` : "无法解析响应数据"));
+        }
+        const source = String(result?.solar_data?.source || "");
+        if (useFullModel.value) {
+          if (!source.includes("NASA")) {
+            throw new Error("未获取到 NASA 气候数据，请检查网络后重试");
+          }
+          if (result.inference_version !== "v3-nasa-gat-reg") {
+            throw new Error("后端推理版本过旧，请重启 api_server_full.py 后重试");
+          }
+          if (Number(result.pvpi) >= 0.999) {
+            throw new Error("PVPI 结果异常（恒为 1.00），请确认已重启最新版 api_server_full.py");
+          }
         }
         realtimeResult.value = result;
         updateMapMarker(lat, lon, result.pvpi);
@@ -1019,6 +1048,10 @@ const fetchPrediction = async (lat, lon) => {
       } catch (error) {
         lastError = error;
       }
+    }
+
+    if (useFullModel.value) {
+      throw lastError || new Error("GAT+GBDT 后端不可用，请确认已启动 api_server_full.py");
     }
 
     const fallback = buildLocalPrediction(lat, lon, lastError?.message || "后端服务不可用");
@@ -1035,22 +1068,19 @@ const fetchPrediction = async (lat, lon) => {
 const toggleModel = async (mode) => {
   errorMessage.value = "";
   try {
-    const response = await fetch('http://localhost:5000/api/toggle_mode', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+    const response = await fetchFromApi("/api/toggle_mode", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ mode })
     });
-    
     const result = await response.json();
-    
     if (result.success) {
-      useFullModel.value = mode === 'full';
-      modelStatusText.value = useFullModel.value ? 'GAT+GBDT集成模型' : '简化公式';
+      useFullModel.value = mode === "full";
+      modelStatusText.value = useFullModel.value ? "GAT+GBDT集成模型" : "简化公式";
     }
   } catch (error) {
-    // 后端不可用时只切换前端显示状态。
-    useFullModel.value = mode === 'full';
-    modelStatusText.value = useFullModel.value ? 'GAT+GBDT集成模型' : '简化公式';
+    useFullModel.value = mode === "full";
+    modelStatusText.value = useFullModel.value ? "GAT+GBDT集成模型" : "简化公式";
   }
   if (lastClickLatLng.value) {
     fetchPrediction(lastClickLatLng.value.lat, lastClickLatLng.value.lon);
@@ -1059,14 +1089,14 @@ const toggleModel = async (mode) => {
 
 const checkModelStatus = async () => {
   try {
-    const response = await fetch('http://localhost:5000/api/status');
+    const response = await fetchFromApi("/api/status");
     const result = await response.json();
-    
-    useFullModel.value = false;
-    modelStatusText.value = '简化公式';
+    const modelLoaded = Boolean(result.model_loaded);
+    useFullModel.value = modelLoaded;
+    modelStatusText.value = modelLoaded ? "GAT+GBDT集成模型" : "简化公式";
   } catch (error) {
     useFullModel.value = false;
-    modelStatusText.value = '简化公式';
+    modelStatusText.value = "简化公式";
   }
 };
 
